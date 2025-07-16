@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Autocorrect System</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    
+    <!-- Add the Montserrat font from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+        }
+        .suggestion {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .suggestion:hover {
+            background-color: #e5e7eb;
+        }
+        .highlight {
+            background-color: #fde68a;
+            padding: 2px;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="min-h-screen flex flex-col">
+        <header class="bg-blue-600 text-white">
+            <div class="container mx-auto px-4 py-6">
+                <h1 class="text-3xl font-bold">Autocorrect System</h1>
+                <p class="mt-2 text-blue-100">Real-time context-aware spelling correction</p>
+            </div>
+        </header>
+
+        <main class="container mx-auto px-4 py-8 flex-grow">
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-xl font-semibold mb-4">Write Something</h2>
+                
+                <div class="mb-4">
+                    <textarea id="textInput" rows="6" class="w-full p-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                        placeholder="Start typing here. The system will automatically detect and suggest corrections for misspelled words."></textarea>
+                </div>
+                
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <button id="correctBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        Correct Text
+                    </button>
+                    <button id="clearBtn" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-gray-400">
+                        Clear
+                    </button>
+                </div>
+                
+                <div id="suggestionArea" class="hidden mb-4">
+                    <h3 class="text-lg font-medium mb-2">Suggestions for <span id="currentWord" class="font-bold"></span></h3>
+                    <div id="suggestions" class="flex flex-wrap gap-2"></div>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-xl font-semibold mb-4">Corrected Output</h2>
+                <div id="correctedText" class="p-3 bg-gray-50 border border-gray-200 rounded min-h-[100px]">
+                    <p class="text-gray-400 italic">Corrected text will appear here</p>
+                </div>
+            </div>
+            
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-4">Custom Dictionary</h2>
+                <p class="mb-4">Add words to your personal dictionary that you don't want to be corrected.</p>
+                
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <input type="text" id="newWord" class="flex-grow p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500" 
+                        placeholder="Enter a word to add">
+                    <button id="addWordBtn" class="bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded focus:outline-none focus:ring-2 focus:ring-green-500">
+                        Add to Dictionary
+                    </button>
+                </div>
+                
+                <div id="userDictionary" class="flex flex-wrap gap-2 mt-4">
+                    <!-- User dictionary words will appear here -->
+                </div>
+            </div>
+        </main>
+        
+        <footer class="bg-gray-800 text-white py-6">
+            <div class="container mx-auto px-4 text-center">
+                <p>Autocorrect System &copy; 2025</p>
+            </div>
+        </footer>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const textInput = document.getElementById('textInput');
+            const correctBtn = document.getElementById('correctBtn');
+            const clearBtn = document.getElementById('clearBtn');
+            const correctedText = document.getElementById('correctedText');
+            const suggestionArea = document.getElementById('suggestionArea');
+            const currentWord = document.getElementById('currentWord');
+            const suggestions = document.getElementById('suggestions');
+            const newWord = document.getElementById('newWord');
+            const addWordBtn = document.getElementById('addWordBtn');
+            const userDictionary = document.getElementById('userDictionary');
+            
+            // Store custom dictionary words
+            const customDictionary = new Set();
+            
+            // Add word to custom dictionary
+            addWordBtn.addEventListener('click', function() {
+                const word = newWord.value.trim();
+                if (word) {
+                    addToDictionary(word);
+                    newWord.value = '';
+                }
+            });
+            
+            function addToDictionary(word) {
+                fetch('/api/add-to-dictionary', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ word })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        if (!customDictionary.has(word)) {
+                            customDictionary.add(word);
+                            const wordElement = document.createElement('div');
+                            wordElement.className = 'bg-blue-100 text-blue-800 px-3 py-1 rounded-full flex items-center';
+                            wordElement.innerHTML = `
+                                <span>${word}</span>
+                                <button class="ml-2 text-blue-600 hover:text-blue-800 focus:outline-none" data-word="${word}">×</button>
+                            `;
+                            userDictionary.appendChild(wordElement);
+                            
+                            // Add event listener to remove button
+                            wordElement.querySelector('button').addEventListener('click', function() {
+                                const wordToRemove = this.getAttribute('data-word');
+                                customDictionary.delete(wordToRemove);
+                                wordElement.remove();
+                            });
+                        }
+                    }
+                })
+                .catch(error => console.error('Error adding word to dictionary:', error));
+            }
+            
+            // Correct text when button is clicked
+            correctBtn.addEventListener('click', function() {
+                const text = textInput.value.trim();
+                if (text) {
+                    correctText(text);
+                }
+            });
+            
+            // Clear input and corrected text
+            clearBtn.addEventListener('click', function() {
+                textInput.value = '';
+                correctedText.innerHTML = '<p class="text-gray-400 italic">Corrected text will appear here</p>';
+                suggestionArea.classList.add('hidden');
+            });
+            
+            // Get word under cursor in textarea
+            textInput.addEventListener('keyup', function(e) {
+                const text = textInput.value;
+                const cursorPos = textInput.selectionStart;
+                
+                // Find word boundaries around cursor
+                let start = cursorPos;
+                while (start > 0 && !/\s/.test(text.charAt(start - 1))) {
+                    start--;
+                }
+                
+                let end = cursorPos;
+                while (end < text.length && !/\s/.test(text.charAt(end))) {
+                    end++;
+                }
+                
+                const word = text.substring(start, end).trim();
+                
+                // Only get suggestions for words with at least 3 characters
+                if (word.length >= 3) {
+                    getSuggestions(word);
+                } else {
+                    suggestionArea.classList.add('hidden');
+                }
+            });
+            
+            // Get suggestions for a word
+            function getSuggestions(word) {
+                fetch('/api/suggest', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ word })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.suggestions && data.suggestions.length > 0 && data.suggestions[0] !== word) {
+                        // Display suggestions
+                        currentWord.textContent = word;
+                        suggestions.innerHTML = '';
+                        
+                        data.suggestions.forEach(suggestion => {
+                            const suggestionElement = document.createElement('div');
+                            suggestionElement.className = 'suggestion bg-gray-100 hover:bg-gray-200 px-3 py-1 rounded';
+                            suggestionElement.textContent = suggestion;
+                            suggestionElement.addEventListener('click', function() {
+                                replaceWord(word, suggestion);
+                            });
+                            suggestions.appendChild(suggestionElement);
+                        });
+                        
+                        suggestionArea.classList.remove('hidden');
+                    } else {
+                        suggestionArea.classList.add('hidden');
+                    }
+                })
+                .catch(error => console.error('Error getting suggestions:', error));
+            }
+            
+            // Replace word in textarea with suggestion
+            function replaceWord(oldWord, newWord) {
+                const text = textInput.value;
+                const regex = new RegExp('\\b' + oldWord + '\\b', 'g');
+                textInput.value = text.replace(regex, newWord);
+                suggestionArea.classList.add('hidden');
+            }
+            
+            // Correct text
+            function correctText(text) {
+                fetch('/api/correct', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Show corrected text with highlighting
+                    const originalWords = data.original.split(/\s+/);
+                    const correctedWords = data.corrected.split(/\s+/);
+                    
+                    let html = '';
+                    for (let i = 0; i < correctedWords.length; i++) {
+                        const originalWord = originalWords[i] || '';
+                        const correctedWord = correctedWords[i] || '';
+                        
+                        if (originalWord.toLowerCase() !== correctedWord.toLowerCase() && originalWord) {
+                            html += `<span class="highlight" title="Original: ${originalWord}">${correctedWord}</span> `;
+                        } else {
+                            html += correctedWord + ' ';
+                        }
+                    }
+                    
+                    correctedText.innerHTML = html;
+                })
+                .catch(error => console.error('Error correcting text:', error));
+            }
+        });
+    </script>
+</body>
+</html>
